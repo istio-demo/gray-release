@@ -8,5 +8,8 @@ gray:
 curl:
 	./curl.sh
 
+curl-cookie:
+	./curl-cookie.sh
+
 log:
 	kubectl logs -l app=httpbin --prefix=true --tail 1 -f

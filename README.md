@@ -56,31 +56,49 @@ kind: VirtualService
 metadata:
   name: httpbin
 spec:
+  gateways:
+    - mesh
+    - all
   hosts:
     - httpbin
+    - httpbin.imroc.cc
   http:
+    - match:
+        - headers:
+            cookie:
+              regex: "^(.*?;)?(email=[^;]+@imroc.cc)(;.*)?$"
+      route:
+        - destination:
+            host: httpbin
+            subset: v1
+          weight: 90
+        - destination:
+            host: httpbin
+            subset: v2
+          weight: 10
     - route:
         - destination:
             host: httpbin
             subset: v1
-          weight: 80
-        - destination:
-            host: httpbin
-            subset: v2
-          weight: 20
+
 ```
 
-再次使用前面的 `make curl` 和 `make log` 进行验证。可以看到每次 v1 收到的请求，v2 也收到了。
+* 针对使用 `imroc.cc` 邮箱的用户，10% 的流量灰度 v2 版本。
+* 其它用户不影响。
+
+再次使用前面的 `make curl` 和 `make log` 进行验证，可以看到仍然只转发给 v1 版本，因为 `make curl` 发请求时，Cookie 中的邮箱是 `test@example.com`。
+
+最后再使用 `make curl-cookie` 和 `make log` 进行验证，可以看到有 10% 流量转发给了 v2 版本，因为 `make curl-cookie` 发请求时，Cookie 中的邮箱地址是 `roc@imroc.cc`:
 
 ```txt
-[pod/httpbin-v1-75d9447d79-2hnzz/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:42 +0000] "GET /headers HTTP/1.1" 200 314 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v1-75d9447d79-2hnzz/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:43 +0000] "GET /headers HTTP/1.1" 200 314 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v2-fb86d8d46-fwwdl/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:43 +0000] "GET /headers HTTP/1.1" 200 354 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v2-fb86d8d46-fwwdl/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:44 +0000] "GET /headers HTTP/1.1" 200 354 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v1-75d9447d79-2hnzz/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:44 +0000] "GET /headers HTTP/1.1" 200 314 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v2-fb86d8d46-fwwdl/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:45 +0000] "GET /headers HTTP/1.1" 200 354 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v1-75d9447d79-2hnzz/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:45 +0000] "GET /headers HTTP/1.1" 200 314 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v1-75d9447d79-2hnzz/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:46 +0000] "GET /headers HTTP/1.1" 200 314 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v2-fb86d8d46-fwwdl/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:46 +0000] "GET /headers HTTP/1.1" 200 354 "-" "curl/7.85.0-DEV"
-[pod/httpbin-v2-fb86d8d46-fwwdl/httpbin] 127.0.0.6 - - [21/Oct/2022:09:40:47 +0000] "GET /headers HTTP/1.1" 200 354 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:00 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:00 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:00 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:01 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:01 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:01 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:01 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:02 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v2-fb86d8d46-wg98n/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:02 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
+[pod/httpbin-v1-75d9447d79-q8gnw/httpbin] 127.0.0.6 - - [26/Oct/2022:12:41:02 +0000] "GET /headers HTTP/1.1" 200 570 "-" "curl/7.85.0-DEV"
 ```
