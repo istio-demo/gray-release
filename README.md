@@ -56,12 +56,8 @@ kind: VirtualService
 metadata:
   name: httpbin
 spec:
-  gateways:
-    - mesh
-    - all
   hosts:
     - httpbin
-    - httpbin.imroc.cc
   http:
     - match:
         - headers:
