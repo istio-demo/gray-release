@@ -42,7 +42,7 @@ kubectl logs -l app=httpbin --prefix=true --tail 1 -f
 
 ## 配置灰度发布规则
 
-执行以下命令将 10% 的流量分给 v2 版本服务:
+执行以下命令将使用 `imroc.cc` 邮箱的用户 10% 的流量分给 v2 版本服务:
 
 ```bash
 make gray
